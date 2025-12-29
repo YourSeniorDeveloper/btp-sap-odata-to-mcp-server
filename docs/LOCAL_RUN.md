@@ -20,6 +20,20 @@ SAP_DESTINATION_NAME=MY_DESTINATION
 
 You can also set any service discovery environment variables described in the main documentation.
 
+## Preparing Connectivity service to run locally
+Do a first deploy if you dont want to configure keys manually without the default-env.json file
+
+After this deploy copy the enviromment variables from btp to the default-env.json
+
+Do the commands below to create a tunnel between btp and your local machine
+
+cf ssh-enabled sap-mcp-server-dev
+cf enable-ssh sap-mcp-server-dev
+cf restart sap-mcp-server-dev
+cf ssh -L 20003:connectivityproxy.internal.cf.us10-001.hana.ondemand.com:20003 sap-mcp-server-dev
+# dont forget to change the connectivity configuration of default-env.json: "onpremise_proxy_host": "127.0.0.1"
+
+
 ## Running the Server
 
 After configuration, start the server with:

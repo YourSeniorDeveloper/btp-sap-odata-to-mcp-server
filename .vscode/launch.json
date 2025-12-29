@@ -10,6 +10,16 @@
       "outFiles": [
         "${workspaceFolder}/dist/**/*.js"
       ]
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to Remote",
+      "address": "127.0.0.1",
+      "port": 9229,
+      "localRoot": "${workspaceFolder}/dist",
+      "remoteRoot": "/home/vcap/app",
+      "skipFiles": ["node_modules/**"]
     }
   ],
   "version": "0.2.0"
