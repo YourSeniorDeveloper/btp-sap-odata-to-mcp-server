@@ -15,6 +15,7 @@ import { SAPDiscoveryService } from './services/sap-discovery.js';
 import { ODataService } from './types/sap-types.js';
 import { ServiceDiscoveryConfigService } from './services/service-discovery-config.js';
 import { AuthService, AuthRequest } from './services/auth-service.js';
+import { isGeminiClient, transformMCPResponseForGemini } from './utils/gemini-compat.js';
 
 // Global type extensions
 declare global {
@@ -307,6 +308,8 @@ export function createApp(): express.Application {
     // SECURITY: Optional authentication - allows Claude Desktop to connect without OAuth
     app.post('/mcp', authService.authenticateJWT() as express.RequestHandler, async (req, res) => {
         const authReq = req as AuthRequest;
+        const isGemini = isGeminiClient(authReq);
+        
         try {
             // Get session ID from header
             const sessionId = authReq.headers['mcp-session-id'] as string | undefined;
@@ -329,6 +332,41 @@ export function createApp(): express.Application {
                     },
                     id: authReq.body?.id || null
                 });
+            }
+
+            // Intercept responses for Gemini compatibility
+            if (isGemini) {
+                logger.debug('🔍 Gemini client detected, enabling schema transformation');
+                
+                // Store original methods
+                const originalJson = res.json.bind(res);
+                const originalSend = res.send.bind(res);
+                
+                // Override json method to transform responses
+                res.json = function(body: unknown) {
+                    const transformed = transformMCPResponseForGemini(body);
+                    return originalJson(transformed);
+                };
+                
+                // Override send method (used by some transports)
+                res.send = function(body: unknown) {
+                    if (typeof body === 'string') {
+                        try {
+                            const parsed = JSON.parse(body);
+                            const transformed = transformMCPResponseForGemini(parsed);
+                            return originalSend(JSON.stringify(transformed));
+                        } catch {
+                            // Not JSON, send as-is
+                            return originalSend(body);
+                        }
+                    }
+                    // If body is an object, transform it
+                    if (typeof body === 'object' && body !== null) {
+                        const transformed = transformMCPResponseForGemini(body);
+                        return originalJson(transformed);
+                    }
+                    return originalSend(body);
+                };
             }
 
             // Handle the request
