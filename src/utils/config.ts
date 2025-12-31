@@ -74,6 +74,20 @@ export class Config {
 
         // Maximum services to discover (prevents overwhelming the system)
         this.config.set('odata.maxServices', parseInt(process.env.ODATA_MAX_SERVICES || '50'));
+
+        // Service list - exact service names to allow (takes precedence over patterns)
+        const serviceList = process.env.ODATA_SERVICE_LIST;
+        if (serviceList) {
+            try {
+                // Parse as JSON array
+                const list = JSON.parse(serviceList);
+                this.config.set('odata.serviceList', Array.isArray(list) ? list : [list]);
+            } catch {
+                // Fallback to comma-separated string
+                this.config.set('odata.serviceList', serviceList.split(',').map(s => s.trim()));
+            }
+        }
+        // If not set, the key won't exist in the config map
     }
 
     get<T = string>(key: string, defaultValue?: T): T {
@@ -105,10 +119,21 @@ export class Config {
             return true;
         }
 
-    // discoveryMode is not used, so removed for cleanup
+        const serviceList = this.get<string[]>('odata.serviceList', undefined);
         const servicePatterns = this.get('odata.servicePatterns', []);
         const exclusionPatterns = this.get('odata.exclusionPatterns', []);
 
+        // If service list is defined, use it (exact match only)
+        if (serviceList && serviceList.length > 0) {
+            // Check exclusion patterns first
+            if (this.matchesAnyPattern(serviceId, exclusionPatterns)) {
+                return false;
+            }
+            // Check if service is in the exact list
+            return serviceList.includes(serviceId);
+        }
+
+        // Fall back to pattern-based filtering
         // Check exclusion patterns first
         if (this.matchesAnyPattern(serviceId, exclusionPatterns)) {
             return false;
@@ -184,6 +209,7 @@ export class Config {
         return {
             allowAllServices: this.get('odata.allowAllServices', false),
             discoveryMode: this.get('odata.discoveryMode', 'whitelist'),
+            serviceList: this.get('odata.serviceList', undefined),
             servicePatterns: this.get('odata.servicePatterns', []),
             exclusionPatterns: this.get('odata.exclusionPatterns', []),
             maxServices: this.get('odata.maxServices', 50)

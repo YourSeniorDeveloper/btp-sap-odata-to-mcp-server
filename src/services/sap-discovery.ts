@@ -5,7 +5,7 @@ import { Config } from '../utils/config.js';
 import { ODataService, EntityType, ServiceMetadata } from '../types/sap-types.js';
 
 import { JSDOM } from 'jsdom';
-import { tr } from 'zod/v4/locales';
+
 
 export class SAPDiscoveryService {
     private catalogEndpoints = [

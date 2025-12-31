@@ -1,13 +1,39 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "npm",
-			"label": "npm run build",
-			"script": "build",
-			"group": "build",
-			"problemMatcher": [],
-			"detail": "tsc && chmod +x dist/index.js"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build:btp",
+      "type": "npm",
+      "script": "build:btp",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "deploy:btp",
+      "type": "npm",
+      "script": "deploy:btp",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "dependsOn": "build:btp"
+    },
+    {
+      "label": "build and deploy:btp",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "build:btp",
+        "deploy:btp"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
 }
