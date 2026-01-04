@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import 'dotenv/config';
 import { DestinationService } from './services/destination-service.js';
 import { SAPClient } from './services/sap-client.js';
+import { SAPDiscoveryService } from './services/sap-discovery.js';
 import { Logger } from './utils/logger.js';
 import { Config } from './utils/config.js';
 
@@ -119,4 +120,43 @@ export async function runStdioServer(discoveredServices: ODataService[]): Promis
         logger.error('Failed to start SAP MCP Server:', error);
         process.exit(1);
     }
+}
+
+// Entry point for stdio mode
+// Check if this file is being run directly (not imported)
+const isMainModule = process.argv[1] && (
+    process.argv[1].endsWith('mcp-server.js') ||
+    process.argv[1].endsWith('mcp-server.ts') ||
+    process.argv[1].replace(/\\/g, '/').endsWith('mcp-server.js') ||
+    process.argv[1].replace(/\\/g, '/').endsWith('mcp-server.ts')
+);
+
+if (isMainModule) {
+    (async () => {
+        const logger = new Logger('sap-mcp-server');
+        try {
+            logger.info('🔍 Starting service discovery...');
+            
+            const config = new Config();
+            const destinationService = new DestinationService(logger, config);
+            const sapClient = new SAPClient(destinationService, logger);
+            const sapDiscoveryService = new SAPDiscoveryService(sapClient, logger, config);
+            
+            // Discover services with timeout protection
+            const discoveryPromise = sapDiscoveryService.discoverAllServices();
+            const timeoutPromise = new Promise<ODataService[]>((_, reject) => 
+                setTimeout(() => reject(new Error('Service discovery timeout after 30 seconds')), 30000)
+            );
+            
+            const discoveredServices = await Promise.race([discoveryPromise, timeoutPromise]) as ODataService[];
+            logger.info(`✅ Discovered ${discoveredServices.length} services`);
+            
+            await runStdioServer(discoveredServices);
+        } catch (error) {
+            logger.error('Failed to start stdio server:', error);
+            // Even if discovery fails, start with empty services so inspector can connect
+            logger.warn('Starting with empty service list - discovery can be triggered via tools');
+            await runStdioServer([]);
+        }
+    })();
 }
