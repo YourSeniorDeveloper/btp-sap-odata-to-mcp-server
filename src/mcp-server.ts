@@ -145,11 +145,11 @@ if (isMainModule) {
             // Discover services with timeout protection
             const discoveryPromise = sapDiscoveryService.discoverAllServices();
             const timeoutPromise = new Promise<ODataService[]>((_, reject) => 
-                setTimeout(() => reject(new Error('Service discovery timeout after 30 seconds')), 30000)
+                setTimeout(() => reject(new Error('Service discovery timeout after 60 seconds')), 60000)
             );
             
             const discoveredServices = await Promise.race([discoveryPromise, timeoutPromise]) as ODataService[];
-            logger.info(`✅ Discovered ${discoveredServices.length} services`);
+//            logger.info(`✅ Discovered ${discoveredServices.length} services`);
             
             await runStdioServer(discoveredServices);
         } catch (error) {
